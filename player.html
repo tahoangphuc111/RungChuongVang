@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Rung Chuông Vàng — Thí Sinh</title>
+    <meta name="description" content="Trang đăng nhập dành cho thí sinh thi Rung Chuông Vàng" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+    <style>
+        /* ==================== DESIGN TOKENS ==================== */
+        :root {
+            --gold: #ffd700;
+            --gold-2: #ffb800;
+            --gold-3: #ff9d00;
+            --gold-glow: rgba(255, 215, 0, 0.45);
+            --blue: #1e90ff;
+            --blue-dark: #0a5fd4;
+            --blue-soft: rgba(30, 144, 255, 0.12);
+            --red: #e63946;
+            --red-dark: #b31038;
+            --green: #22c55e;
+            --bg: #060c18;
+            --bg-card: rgba(255, 255, 255, 0.045);
+            --border: rgba(255, 215, 0, 0.22);
+            --border-focus: rgba(255, 215, 0, 0.7);
+            --text: #f1f5f9;
+            --muted: #94a3b8;
+            --font: 'Be Vietnam Pro', sans-serif;
+            --font-display: 'Fredoka', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: var(--font);
+            color: var(--text);
+            min-height: 100vh;
+            background: var(--bg);
+            background-image:
+                radial-gradient(ellipse 100% 60% at 50% -10%, rgba(30, 144, 255, 0.22) 0%, transparent 65%),
+                radial-gradient(ellipse 70% 50% at 85% 85%, rgba(230, 57, 70, 0.12) 0%, transparent 55%),
+                radial-gradient(ellipse 60% 40% at 15% 75%, rgba(255, 215, 0, 0.07) 0%, transparent 50%);
+            background-attachment: fixed;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 24px 16px 40px;
+        }
+
+        /* ==================== STARS ==================== */
+        #starsLayer {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .star {
+            position: absolute;
+            border-radius: 50%;
+            background: white;
+            animation: twinkle var(--dur, 3s) ease-in-out infinite;
+            animation-delay: var(--delay, 0s);
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.08; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.4); }
+        }
+
+        /* ==================== LAYOUT ==================== */
+        .app-wrap {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 430px;
+        }
+        .d-none { display: none !important; }
+
+        /* ==================== HEADER ==================== */
+        .app-header {
+            text-align: center;
+            margin-bottom: 22px;
+            padding-top: 8px;
+        }
+        .bell-icon {
+            font-size: 54px;
+            display: block;
+            filter: drop-shadow(0 0 18px var(--gold-glow));
+            animation: bellRing 4s ease-in-out infinite;
+            transform-origin: top center;
+        }
+        @keyframes bellRing {
+            0%, 60%, 100% { transform: rotate(0deg); }
+            65% { transform: rotate(-10deg); }
+            70% { transform: rotate(10deg); }
+            75% { transform: rotate(-7deg); }
+            80% { transform: rotate(7deg); }
+            85% { transform: rotate(-4deg); }
+            90% { transform: rotate(4deg); }
+            95% { transform: rotate(0deg); }
+        }
+        .app-title {
+            font-family: var(--font-display);
+            font-size: 30px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--gold-2) 0%, var(--gold) 40%, var(--gold-3) 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 3s linear infinite;
+            letter-spacing: 1px;
+            margin-top: 10px;
+            text-transform: uppercase;
+        }
+        @keyframes shimmer {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+        .app-subtitle {
+            font-size: 13px;
+            color: var(--muted);
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        /* ==================== CARD ==================== */
+        .glass-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            padding: 26px 22px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 215, 0, 0.04) inset;
+            animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.93) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .card-title {
+            font-size: 19px;
+            font-weight: 800;
+            color: var(--gold);
+            margin-bottom: 4px;
+        }
+        .card-desc {
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 22px;
+            line-height: 1.55;
+        }
+
+        /* ==================== FORM ==================== */
+        .field { margin-bottom: 15px; }
+        .field-label {
+            display: block;
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: var(--muted);
+            margin-bottom: 7px;
+        }
+        .input-wrap { position: relative; }
+        .input-prefix {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-family: var(--font-display);
+            font-size: 21px;
+            font-weight: 700;
+            color: var(--gold);
+            pointer-events: none;
+            user-select: none;
+            letter-spacing: 0.05em;
+        }
+        .field-input {
+            width: 100%;
+            padding: 13px 14px;
+            border-radius: 12px;
+            border: 1.5px solid rgba(255, 215, 0, 0.22);
+            background: rgba(0, 0, 0, 0.28);
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 15px;
+            font-weight: 600;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            -webkit-appearance: none;
+        }
+        .field-input.code-input {
+            padding-left: 52px;
+            font-family: var(--font-display);
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: var(--gold);
+        }
+        .field-input:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.15);
+        }
+        .field-input::placeholder {
+            color: rgba(148, 163, 184, 0.35);
+            font-weight: 500;
+            font-size: 14px;
+            letter-spacing: normal;
+        }
+        .field-input.code-input::placeholder {
+            font-family: var(--font-display);
+            font-size: 24px;
+            letter-spacing: 0.1em;
+        }
+        .field-input:read-only {
+            border-color: rgba(34, 197, 94, 0.35);
+            background: rgba(34, 197, 94, 0.05);
+            color: #86efac;
+        }
+
+        .lookup-msg {
+            font-size: 11.5px;
+            margin-top: 6px;
+            min-height: 16px;
+            color: var(--muted);
+            padding-left: 2px;
+        }
+        .lookup-msg.ok { color: #4ade80; }
+        .lookup-msg.warn { color: #fb923c; }
+
+        /* ==================== UNIT COMBOBOX (searchable dropdown) ==================== */
+        .combo-wrap { position: relative; }
+        .combo-dropdown {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: calc(100% + 6px);
+            max-height: 264px;
+            overflow-y: auto;
+            background: #0c1526;
+            border: 1.5px solid var(--border-focus);
+            border-radius: 14px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+            z-index: 30;
+            padding: 6px;
+        }
+        .combo-group-label {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--gold);
+            opacity: 0.75;
+            padding: 8px 10px 4px;
+        }
+        .combo-option {
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .combo-option:hover,
+        .combo-option.active {
+            background: rgba(255, 215, 0, 0.14);
+        }
+        .combo-option .opt-cluster-tag {
+            flex-shrink: 0;
+            font-size: 10px;
+            font-weight: 800;
+            color: #3a1d00;
+            background: linear-gradient(135deg, var(--gold-2), var(--gold-3));
+            padding: 3px 8px;
+            border-radius: 999px;
+            letter-spacing: 0.03em;
+        }
+        .combo-empty {
+            padding: 16px 12px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .combo-dropdown::-webkit-scrollbar { width: 6px; }
+        .combo-dropdown::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.25); border-radius: 6px; }
+
+        /* ==================== SEAT PREVIEW ==================== */
+        .seat-preview {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 16px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(30, 144, 255, 0.06));
+            border: 1px solid rgba(255, 215, 0, 0.25);
+            margin-bottom: 18px;
+            animation: popIn 0.3s ease;
+        }
+        .preview-num {
+            font-family: var(--font-display);
+            font-size: 40px;
+            font-weight: 700;
+            color: var(--gold);
+            text-shadow: 0 0 20px var(--gold-glow);
+            line-height: 1;
+            min-width: 50px;
+            text-align: center;
+        }
+        .preview-info .preview-code {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: 0.08em;
+        }
+        .preview-info .preview-label {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        /* ==================== BUTTON ==================== */
+        .btn-join {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--gold-2) 0%, var(--gold) 50%, var(--gold-3) 100%);
+            background-size: 200% auto;
+            color: #1a0800;
+            font-family: var(--font);
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background-position 0.3s ease;
+            box-shadow: 0 4px 24px rgba(255, 215, 0, 0.45);
+            margin-top: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            -webkit-appearance: none;
+        }
+        .btn-join:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(255, 215, 0, 0.6);
+            background-position: right center;
+        }
+        .btn-join:active:not(:disabled) { transform: scale(0.98); }
+        .btn-join:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        .error-msg {
+            color: #f87171;
+            font-size: 12.5px;
+            margin-top: 10px;
+            min-height: 16px;
+            text-align: center;
+        }
+
+        /* ==================== PLAYER BADGE ==================== */
+        .player-badge {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(30, 144, 255, 0.06));
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 18px;
+            padding: 18px 16px;
+            text-align: center;
+            margin-bottom: 14px;
+            animation: popIn 0.4s ease;
+        }
+        .badge-seat-num {
+            font-family: var(--font-display);
+            font-size: 58px;
+            font-weight: 700;
+            color: var(--gold);
+            text-shadow: 0 0 30px var(--gold-glow);
+            line-height: 1;
+        }
+        .badge-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text);
+            margin-top: 6px;
+        }
+        .badge-unit {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 3px;
+        }
+        .badge-code {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            background: rgba(30, 144, 255, 0.12);
+            border: 1px solid rgba(30, 144, 255, 0.3);
+            color: var(--blue);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+        }
+
+        /* ==================== STATUS SCREENS ==================== */
+        .status-screen {
+            text-align: center;
+            padding: 26px 18px;
+        }
+        .status-icon {
+            font-size: 56px;
+            display: block;
+            margin-bottom: 14px;
+            filter: drop-shadow(0 0 12px rgba(255,255,255,0.2));
+        }
+        .status-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--gold);
+            margin-bottom: 8px;
+        }
+        .status-text {
+            font-size: 14px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        /* ==================== COUNTDOWN ==================== */
+        .countdown-num {
+            font-family: var(--font-display);
+            font-size: 100px;
+            font-weight: 700;
+            color: var(--gold);
+            text-shadow: 0 0 50px var(--gold-glow);
+            line-height: 1;
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        /* ==================== QUESTION PHASE ==================== */
+        .q-wrap { padding: 4px 0; }
+        .q-text {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text);
+            text-align: center;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+        .timer-wrap { margin-bottom: 16px; }
+        .timer-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+        .timer-track {
+            height: 7px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.07);
+            overflow: hidden;
+        }
+        .timer-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--blue), var(--gold), var(--red));
+            transition: width 0.1s linear;
+        }
+
+        .answer-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        @media (max-width: 370px) {
+            .answer-grid { grid-template-columns: 1fr; }
+        }
+
+        .answer-btn {
+            padding: 14px 10px;
+            border-radius: 14px;
+            border: 2px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: transform 0.13s ease, opacity 0.13s ease, border-color 0.15s ease;
+            min-height: 68px;
+            text-align: left;
+            -webkit-appearance: none;
+        }
+        .answer-btn:active:not(:disabled) { transform: scale(0.96); }
+        .answer-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .answer-btn .letter {
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 15px;
+            color: #fff;
+        }
+        .answer-btn .ans-text {
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.35;
+            color: #fff;
+            flex: 1;
+        }
+        .answer-btn.opt-0 { background: linear-gradient(135deg, #e63946 0%, #9b111e 100%); }
+        .answer-btn.opt-1 { background: linear-gradient(135deg, #1e90ff 0%, #0a5fd4 100%); }
+        .answer-btn.opt-2 { background: linear-gradient(135deg, #22c55e 0%, #15803d 100%); }
+        .answer-btn.opt-3 { background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%); }
+        .answer-btn.is-correct { border-color: #4ade80; box-shadow: 0 0 0 2px #4ade80 inset; }
+        .answer-btn.is-wrong { opacity: 0.28; }
+
+        .answered-note {
+            text-align: center;
+            color: var(--muted);
+            font-size: 13px;
+            margin-top: 12px;
+            min-height: 18px;
+            font-weight: 600;
+        }
+        .answered-note.success { color: #4ade80; }
+
+        /* ==================== ELIM BANNER ==================== */
+        #elimBanner {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            background: rgba(180, 16, 56, 0.92);
+            color: #fff;
+            text-align: center;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 700;
+            z-index: 200;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            letter-spacing: 0.04em;
+        }
+
+        /* ==================== LOGOUT LINK ==================== */
+        .logout-link {
+            display: block;
+            text-align: center;
+            margin-top: 14px;
+            font-size: 11px;
+            color: rgba(148,163,184,0.5);
+            cursor: pointer;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+        .logout-link:hover { color: var(--muted); }
+    </style>
+</head>
+
+<body>
+    <div id="starsLayer"></div>
+
+    <div id="elimBanner" class="d-none">💀 Bạn đã bị loại — tiếp tục theo dõi và cổ vũ nhé!</div>
+
+    <div class="app-wrap">
+
+        <!-- ============ LOGIN VIEW ============ -->
+        <div id="loginView">
+            <div class="app-header">
+                <span class="bell-icon">🔔</span>
+                <div class="app-title">Rung Chuông Vàng</div>
+                <div class="app-subtitle">Team Building Mùa Hè 2026</div>
+            </div>
+
+            <div class="glass-card">
+                <div class="card-title">🎯 Vào phòng thi</div>
+                <div class="card-desc">Nhìn vào thẻ ghế của bạn và nhập số ghế cùng tên bên dưới.</div>
+
+                <!-- Seat code input -->
+                <div class="field">
+                    <label class="field-label" for="codeInput">Số ghế ngồi của bạn</label>
+                    <div class="input-wrap">
+                        <span class="input-prefix">XH</span>
+                        <input id="codeInput" class="field-input code-input"
+                               type="tel" inputmode="numeric" maxlength="3"
+                               placeholder="031" autocomplete="off"
+                               aria-label="Nhập số ghế 001-130" />
+                    </div>
+                    <div id="lookupMsg" class="lookup-msg"></div>
+                </div>
+
+                <!-- Seat preview badge (hidden until valid) -->
+                <div id="seatPreview" class="seat-preview d-none">
+                    <div class="preview-num" id="previewNum">31</div>
+                    <div class="preview-info">
+                        <div class="preview-code" id="previewCode">XH031</div>
+                        <div class="preview-label">Ghế của bạn</div>
+                    </div>
+                </div>
+
+                <!-- Name -->
+                <div class="field">
+                    <label class="field-label" for="nameInput">Họ và tên</label>
+                    <input id="nameInput" class="field-input"
+                           type="text" placeholder="Nguyễn Văn A"
+                           autocomplete="name" autocapitalize="words" />
+                </div>
+
+                <!-- Unit (searchable dropdown) -->
+                <div class="field">
+                    <label class="field-label" for="unitInput">Đơn vị / Chi đoàn</label>
+                    <div class="combo-wrap">
+                        <input id="unitInput" class="field-input"
+                               type="text" placeholder="Gõ để tìm tổ dân phố / cụm..."
+                               autocomplete="off" />
+                        <div id="unitDropdown" class="combo-dropdown d-none"></div>
+                    </div>
+                </div>
+
+                <button id="joinBtn" class="btn-join">🚀 Vào phòng thi</button>
+                <div id="loginError" class="error-msg"></div>
+            </div>
+
+            <span class="logout-link" onclick="forceClearAndReload()" style="margin-top:12px; display:block;">Đã đăng nhập rồi? Bấm để đổi ghế</span>
+        </div>
+
+        <!-- ============ MAIN VIEW ============ -->
+        <div id="mainView" class="d-none">
+            <!-- Player badge -->
+            <div class="player-badge">
+                <div class="badge-seat-num" id="badgeSeatNum">1</div>
+                <div class="badge-name" id="badgeName">—</div>
+                <div class="badge-unit" id="badgeUnit"></div>
+                <span class="badge-code" id="badgeCode">XH001</span>
+            </div>
+
+            <!-- Phase: Lobby -->
+            <div id="phaseLobby" class="glass-card status-screen">
+                <span class="status-icon">🕒</span>
+                <div class="status-title">Đã vào phòng thành công!</div>
+                <p class="status-text">Vui lòng chờ quản trò bắt đầu trò chơi.<br>Giữ màn hình điện thoại sáng nhé 📱</p>
+            </div>
+
+            <!-- Phase: Countdown -->
+            <div id="phaseCountdown" class="glass-card status-screen d-none">
+                <p class="status-text" style="margin-bottom:8px; font-weight:700;">⚡ Chuẩn bị...</p>
+                <div class="countdown-num" id="countdownNum">5</div>
+            </div>
+
+            <!-- Phase: Question -->
+            <div id="phaseQuestion" class="glass-card q-wrap d-none">
+                <div class="q-text" id="pQuestionText"></div>
+                <div class="timer-wrap" id="timerWrap">
+                    <div class="timer-label">
+                        <span>Thời gian trả lời</span>
+                        <span id="timerText">10s</span>
+                    </div>
+                    <div class="timer-track">
+                        <div class="timer-fill" id="timerFill" style="width:100%;"></div>
+                    </div>
+                </div>
+                <div class="answer-grid" id="answerGrid">
+                    <button class="answer-btn opt-0" data-idx="0">
+                        <span class="letter">A</span>
+                        <span class="ans-text" id="pOptA"></span>
+                    </button>
+                    <button class="answer-btn opt-1" data-idx="1">
+                        <span class="letter">B</span>
+                        <span class="ans-text" id="pOptB"></span>
+                    </button>
+                    <button class="answer-btn opt-2" data-idx="2">
+                        <span class="letter">C</span>
+                        <span class="ans-text" id="pOptC"></span>
+                    </button>
+                    <button class="answer-btn opt-3" data-idx="3">
+                        <span class="letter">D</span>
+                        <span class="ans-text" id="pOptD"></span>
+                    </button>
+                </div>
+                <div class="answered-note" id="answeredNote"></div>
+            </div>
+
+            <!-- Phase: Reveal -->
+            <div id="phaseReveal" class="glass-card status-screen d-none">
+                <span class="status-icon" id="revealIcon">✅</span>
+                <div class="status-title" id="revealTitle">Chính xác!</div>
+                <p class="status-text" id="revealText"></p>
+            </div>
+
+            <!-- Phase: Finished -->
+            <div id="phaseFinished" class="glass-card status-screen d-none">
+                <span class="status-icon">🏆</span>
+                <div class="status-title" id="finishedTitle">Trò chơi kết thúc</div>
+                <p class="status-text" id="finishedText"></p>
+            </div>
+
+            <span class="logout-link" onclick="forceClearAndReload()">Đổi thông tin / đăng xuất</span>
+        </div>
+
+    </div>
+
+    <script src="clusters-data.js"></script>
+    <script src="questions-data.js"></script>
+    <script src="units-data.js"></script>
+    <script src="firebase-config.js"></script>
+    <script>
+        'use strict';
+
+        // ========== STARS ==========
+        const starsLayer = document.getElementById('starsLayer');
+        for (let i = 0; i < 55; i++) {
+            const s = document.createElement('div');
+            s.className = 'star';
+            const sz = Math.random() * 2.5 + 0.8;
+            s.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;--dur:${2+Math.random()*4}s;--delay:${Math.random()*5}s;`;
+            starsLayer.appendChild(s);
+        }
+
+        // ========== HELPERS ==========
+        const $ = id => document.getElementById(id);
+        function show(el) { el.classList.remove('d-none'); }
+        function hide(el) { el.classList.add('d-none'); }
+
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxHes6MzubR8c_tYUOkgd3HfeOrUf1oBREoBywmxlaiej92kUQ9y39Kd1JMZ56NP5JnVg/exec";
+
+        let myCode = null;
+        let myPlayer = null;
+        let currentPhase = null;
+        let answeredThisRound = false;
+        let timerInterval = null;
+        let countdownInterval = null;
+
+        function forceClearAndReload() {
+            localStorage.removeItem('rcv_code');
+            location.reload();
+        }
+
+        // ========== UNIT COMBOBOX (tìm kiếm Đơn vị / Chi đoàn) ==========
+        (function initUnitCombo() {
+            const input = $('unitInput');
+            const dropdown = $('unitDropdown');
+            const data = window.UNITS_FLAT || [];
+            let activeIndex = -1;
+            let currentItems = [];
+
+            function normalize(str) {
+                return (str || '')
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/đ/g, 'd');
+            }
+
+            function filterUnits(keyword) {
+                const kw = normalize(keyword.trim());
+                if (!kw) return data;
+                return data.filter(u => normalize(u.label).includes(kw) || normalize(u.clusterLabel).includes(kw));
+            }
+
+            function renderDropdown(items) {
+                currentItems = items;
+                activeIndex = -1;
+                if (!items.length) {
+                    dropdown.innerHTML = '<div class="combo-empty">Không tìm thấy — bạn có thể tự nhập tên đơn vị.</div>';
+                    show(dropdown);
+                    return;
+                }
+                let html = '';
+                let lastCluster = null;
+                items.slice(0, 60).forEach((u, i) => {
+                    if (u.cluster !== lastCluster) {
+                        html += `<div class="combo-group-label">${u.clusterLabel}</div>`;
+                        lastCluster = u.cluster;
+                    }
+                    html += `<div class="combo-option" data-idx="${i}">
+                                <span>${u.label}</span>
+                                <span class="opt-cluster-tag">${u.clusterLabel}</span>
+                             </div>`;
+                });
+                dropdown.innerHTML = html;
+                show(dropdown);
+            }
+
+            function selectUnit(label) {
+                input.value = label;
+                hide(dropdown);
+            }
+
+            input.addEventListener('input', () => {
+                if (input.readOnly) return;
+                renderDropdown(filterUnits(input.value));
+            });
+
+            input.addEventListener('focus', () => {
+                if (input.readOnly) return;
+                renderDropdown(filterUnits(input.value));
+            });
+
+            dropdown.addEventListener('click', e => {
+                const opt = e.target.closest('.combo-option');
+                if (!opt) return;
+                const idx = parseInt(opt.dataset.idx, 10);
+                if (currentItems[idx]) selectUnit(currentItems[idx].label);
+            });
+
+            input.addEventListener('keydown', e => {
+                if (dropdown.classList.contains('d-none') || !currentItems.length) return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIndex = Math.min(activeIndex + 1, Math.min(currentItems.length, 60) - 1);
+                    updateActive();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIndex = Math.max(activeIndex - 1, 0);
+                    updateActive();
+                } else if (e.key === 'Enter' && activeIndex >= 0) {
+                    e.preventDefault();
+                    selectUnit(currentItems[activeIndex].label);
+                } else if (e.key === 'Escape') {
+                    hide(dropdown);
+                }
+            });
+
+            function updateActive() {
+                dropdown.querySelectorAll('.combo-option').forEach(el => el.classList.remove('active'));
+                const els = dropdown.querySelectorAll('.combo-option');
+                const el = Array.from(els).find(el => parseInt(el.dataset.idx, 10) === activeIndex);
+                if (el) {
+                    el.classList.add('active');
+                    el.scrollIntoView({ block: 'nearest' });
+                }
+            }
+
+            document.addEventListener('click', e => {
+                if (!e.target.closest('.combo-wrap')) hide(dropdown);
+            });
+        })();
+
+        // ========== CODE INPUT ==========
+        let lookupDebounce = null;
+        $('codeInput').addEventListener('input', e => {
+            e.target.value = e.target.value.replace(/\D/g, '').slice(0, 3);
+            const raw = e.target.value;
+            const num = parseInt(raw, 10);
+            clearTimeout(lookupDebounce);
+
+            if (raw.length > 0 && !isNaN(num) && num >= 1 && num <= 130) {
+                const padded = String(num).padStart(3, '0');
+                $('previewNum').textContent = num;
+                $('previewCode').textContent = 'XH' + padded;
+                show($('seatPreview'));
+
+                lookupDebounce = setTimeout(() => lookupSeat('xh' + padded), 400);
+            } else {
+                hide($('seatPreview'));
+                $('lookupMsg').textContent = '';
+                $('lookupMsg').className = 'lookup-msg';
+                $('nameInput').readOnly = false;
+                $('unitInput').readOnly = false;
+            }
+        });
+
+        function lookupSeat(code) {
+            if (!APPS_SCRIPT_URL) return;
+            $('lookupMsg').textContent = '⏳ Đang tra cứu danh sách...';
+            $('lookupMsg').className = 'lookup-msg';
+            fetch(APPS_SCRIPT_URL + '?code=' + encodeURIComponent(code))
+                .then(r => r.json())
+                .then(data => {
+                    const cur = 'xh' + $('codeInput').value.padStart(3, '0');
+                    if (cur !== code) return; // người dùng đã đổi mã
+                    if (data && data.found) {
+                        if (data.name) { $('nameInput').value = data.name; $('nameInput').readOnly = true; }
+                        if (data.unit) { $('unitInput').value = data.unit; $('unitInput').readOnly = true; }
+                        $('lookupMsg').textContent = '✓ Đã xác thực: ' + (data.name || code);
+                        $('lookupMsg').className = 'lookup-msg ok';
+                    } else {
+                        $('nameInput').readOnly = false;
+                        $('unitInput').readOnly = false;
+                        $('lookupMsg').textContent = 'Chưa có trong danh sách — vui lòng tự nhập tên và đơn vị.';
+                        $('lookupMsg').className = 'lookup-msg warn';
+                    }
+                })
+                .catch(() => {
+                    $('lookupMsg').textContent = '';
+                    $('nameInput').readOnly = false;
+                    $('unitInput').readOnly = false;
+                });
+        }
+
+        // ========== JOIN ==========
+        function attemptJoin() {
+            const raw = $('codeInput').value.trim();
+            const num = parseInt(raw, 10);
+            if (!raw || isNaN(num) || num < 1 || num > 130) {
+                $('loginError').textContent = 'Vui lòng nhập số ghế hợp lệ từ 1 đến 130.';
+                return;
+            }
+            const padded = String(num).padStart(3, '0');
+            const code = 'xh' + padded;
+            const parsed = parseCode(code);
+            if (!parsed) { $('loginError').textContent = 'Mã ghế không hợp lệ.'; return; }
+
+            const name = ($('nameInput').value || '').trim() || ('Thí sinh ghế ' + num);
+            const unit = ($('unitInput').value || '').trim();
+
+            $('joinBtn').disabled = true;
+            $('loginError').textContent = '';
+
+            const ref = db.ref('teams/' + code);
+            ref.once('value').then(snap => {
+                const existing = snap.val();
+                const keepStatus = existing && existing.status && existing.status !== 'not_joined'
+                    ? existing.status : 'alive';
+                const payload = existing
+                    ? Object.assign({}, existing, {
+                        displayName: name,
+                        unit: unit,
+                        status: keepStatus,
+                        joinedAt: existing.joinedAt || firebase.database.ServerValue.TIMESTAMP,
+                    })
+                    : {
+                        seatNumber: parsed.seatNumber,
+                        displayName: name,
+                        unit: unit,
+                        status: 'alive',
+                        eliminatedAtQuestion: null,
+                        joinedAt: firebase.database.ServerValue.TIMESTAMP,
+                    };
+                return ref.set(payload).then(() => {
+                    localStorage.setItem('rcv_code', code);
+                    myCode = code;
+                    enterMain(parsed, name, unit);
+                });
+            }).catch(err => {
+                $('loginError').textContent = 'Lỗi kết nối: ' + err.message;
+                $('joinBtn').disabled = false;
+            });
+        }
+
+        $('joinBtn').addEventListener('click', attemptJoin);
+        $('codeInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('nameInput').focus(); });
+        $('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('unitInput').focus(); });
+        $('unitInput').addEventListener('keydown', e => { if (e.key === 'Enter') attemptJoin(); });
+
+        function enterMain(parsed, name, unit) {
+            hide($('loginView'));
+            show($('mainView'));
+            $('badgeSeatNum').textContent = parsed.seatNumber;
+            $('badgeName').textContent = name;
+            $('badgeUnit').textContent = unit || '';
+            $('badgeCode').textContent = parsed.displayCode;
+            listenGame();
+            listenSelf();
+        }
+
+        // ========== AUTO-REJOIN ==========
+        const savedCode = localStorage.getItem('rcv_code');
+        if (savedCode) {
+            const parsed = parseCode(savedCode);
+            if (parsed) {
+                myCode = savedCode;
+                db.ref('teams/' + savedCode).once('value').then(snap => {
+                    const d = snap.val();
+                    enterMain(parsed, d ? (d.displayName || '') : '', d ? (d.unit || '') : '');
+                }).catch(() => enterMain(parsed, '', ''));
+            }
+        }
+
+        // ========== LISTEN SELF ==========
+        function listenSelf() {
+            db.ref('teams/' + myCode).on('value', snap => {
+                myPlayer = snap.val();
+                const isElim = myPlayer && myPlayer.status === 'eliminated';
+                isElim ? show($('elimBanner')) : hide($('elimBanner'));
+            });
+        }
+
+        // ========== LISTEN GAME ==========
+        function listenGame() {
+            db.ref('game').on('value', snap => {
+                handlePhase(snap.val() || { phase: 'lobby' });
+            });
+        }
+
+        function showPhase(id) {
+            ['phaseLobby', 'phaseCountdown', 'phaseQuestion', 'phaseReveal', 'phaseFinished'].forEach(v => {
+                v === id ? show($(v)) : hide($(v));
+            });
+        }
+
+        function clearTimers() {
+            if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+            if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+        }
+
+        function handlePhase(game) {
+            currentPhase = game.phase;
+
+            if (game.phase === 'lobby' || !game.phase) {
+                clearTimers();
+                showPhase('phaseLobby');
+
+            } else if (game.phase === 'countdown') {
+                clearTimers();
+                showPhase('phaseCountdown');
+                countdownInterval = setInterval(() => {
+                    const elapsed = Date.now() - (game.countdownStart || Date.now());
+                    const remain = Math.max(0, 5 - Math.floor(elapsed / 1000));
+                    $('countdownNum').textContent = remain > 0 ? remain : 'GO!';
+                }, 150);
+
+            } else if (game.phase === 'read_question') {
+                clearTimers();
+                showPhase('phaseQuestion');
+                $('timerWrap').style.display = 'none';
+                $('answerGrid').style.display = 'none';
+                const q = QUESTIONS[game.currentQuestionIndex];
+                $('pQuestionText').textContent = q ? q.text : '';
+                $('answeredNote').textContent = 'Chuẩn bị trả lời...';
+                $('answeredNote').className = 'answered-note';
+
+            } else if (game.phase === 'question') {
+                clearTimers();
+                answeredThisRound = false;
+                $('answeredNote').textContent = '';
+                $('answeredNote').className = 'answered-note';
+                const eliminated = myPlayer && myPlayer.status === 'eliminated';
+                showPhase('phaseQuestion');
+                $('timerWrap').style.display = 'block';
+                $('answerGrid').style.display = 'grid';
+                const q = QUESTIONS[game.currentQuestionIndex];
+                $('pQuestionText').textContent = q ? q.text : '';
+                if (q) {
+                    $('pOptA').textContent = q.options.A;
+                    $('pOptB').textContent = q.options.B;
+                    $('pOptC').textContent = q.options.C;
+                    $('pOptD').textContent = q.options.D;
+                }
+                const buttons = document.querySelectorAll('#answerGrid .answer-btn');
+                buttons.forEach(b => {
+                    b.disabled = !!eliminated;
+                    b.classList.remove('is-correct', 'is-wrong');
+                    b.onclick = () => submitAnswer(game.currentQuestionIndex, parseInt(b.dataset.idx, 10));
+                });
+                if (eliminated) { $('answeredNote').textContent = 'Bạn đã bị loại — chỉ có thể theo dõi.'; }
+                const windowMs = (game.answerWindowSeconds || 10) * 1000;
+                timerInterval = setInterval(() => {
+                    const elapsed = Date.now() - (game.startedAt || Date.now());
+                    const remainMs = Math.max(0, windowMs - elapsed);
+                    $('timerFill').style.width = Math.max(0, (remainMs / windowMs) * 100) + '%';
+                    $('timerText').textContent = Math.ceil(remainMs / 1000) + 's';
+                    if (remainMs <= 0) { clearInterval(timerInterval); buttons.forEach(b => b.disabled = true); }
+                }, 100);
+
+            } else if (game.phase === 'reveal' || game.phase === 'result') {
+                clearTimers();
+                showPhase('phaseReveal');
+                const q = QUESTIONS[game.currentQuestionIndex];
+                const wasElimBefore = myPlayer && myPlayer.eliminatedAtQuestion !== null
+                    && myPlayer.eliminatedAtQuestion !== undefined
+                    && myPlayer.eliminatedAtQuestion <= game.currentQuestionIndex;
+                if (wasElimBefore) {
+                    $('revealIcon').textContent = '👀';
+                    $('revealTitle').textContent = 'Bạn đang theo dõi';
+                } else if (myPlayer && myPlayer.status === 'eliminated') {
+                    $('revealIcon').textContent = '💀';
+                    $('revealTitle').textContent = 'Rất tiếc, bạn đã bị loại!';
+                } else {
+                    $('revealIcon').textContent = '✅';
+                    $('revealTitle').textContent = 'Chính xác! Tiếp tục nào!';
+                }
+                $('revealText').textContent = 'Đáp án đúng: ' + (q ? q.options[q.correct] : '—');
+
+            } else if (game.phase === 'finished') {
+                clearTimers();
+                showPhase('phaseFinished');
+                if (game.winnerCode === myCode) {
+                    $('finishedTitle').textContent = '🎉 CHÚC MỪNG VÔ ĐỊCH!';
+                    $('finishedText').textContent = 'Hãy tiến lên sân khấu nhận thưởng!';
+                } else {
+                    $('finishedTitle').textContent = 'Trò chơi đã kết thúc';
+                    db.ref('teams/' + game.winnerCode).once('value').then(s => {
+                        const w = s.val();
+                        $('finishedText').textContent = w ? ('Chúc mừng nhà vô địch: ' + w.displayName) : '';
+                    });
+                }
+            }
+        }
+
+        function submitAnswer(questionIndex, idx) {
+            if (answeredThisRound) return;
+            if (!myPlayer || myPlayer.status === 'eliminated') return;
+            answeredThisRound = true;
+            document.querySelectorAll('#answerGrid .answer-btn').forEach(b => b.disabled = true);
+            $('answeredNote').textContent = '✅ Đã ghi nhận đáp án của bạn!';
+            $('answeredNote').className = 'answered-note success';
+            const letters = ['A', 'B', 'C', 'D'];
+            db.ref('teams/' + myCode + '/answers/' + questionIndex).set({
+                choice: letters[idx] || letters[0],
+                ts: firebase.database.ServerValue.TIMESTAMP
+            });
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — Rung Chuông Vàng</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* ====== OVERRIDES & ADDITIONS ====== */
+        body { font-family: 'Be Vietnam Pro', sans-serif; }
+        h2, h3 { font-family: 'Be Vietnam Pro', sans-serif; }
+
+        .admin-wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
+
+        /* --- Flat seat grid for admin --- */
+        .admin-seat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+            gap: 6px;
+            margin-top: 12px;
+        }
+
+        .admin-slot {
+            padding: 7px 5px 6px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.06);
+            background: rgba(255,255,255,0.03);
+            position: relative;
+            cursor: default;
+            transition: transform 0.15s;
+            min-height: 64px;
+        }
+        .admin-slot:hover { transform: scale(1.05); z-index: 2; }
+
+        .admin-slot.alive     { background: rgba(34,197,94,.09);   border-color: rgba(34,197,94,.3); }
+        .admin-slot.eliminated{ background: rgba(230,57,70,.07);   border-color: rgba(230,57,70,.25); opacity: .65; }
+        .admin-slot.winner    { background: rgba(255,215,0,.15);   border-color: rgba(255,215,0,.6); }
+        .admin-slot.not_joined{ opacity: .3; }
+
+        .slot-code-num {
+            font-family: 'Fredoka', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1;
+        }
+        .admin-slot.eliminated .slot-code-num { text-decoration: line-through; color: #f87171; }
+        .admin-slot.winner     .slot-code-num { color: #ffd700; }
+
+        .slot-player-name {
+            font-size: 8.5px;
+            font-weight: 600;
+            color: #94a3b8;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 96%;
+            margin-top: 3px;
+            line-height: 1.2;
+        }
+        .admin-slot.alive .slot-player-name { color: #e2e8f0; }
+
+        /* Unit color dot */
+        .unit-dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            margin-top: 4px;
+            flex-shrink: 0;
+        }
+        .unit-label-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            max-width: 90%;
+            overflow: hidden;
+        }
+        .unit-label-text {
+            font-size: 7px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 600;
+        }
+
+        /* Answer badge */
+        .answer-badge {
+            position: absolute;
+            top: 3px;
+            right: 4px;
+            font-size: 8px;
+            font-weight: 800;
+            padding: 1px 4px;
+            border-radius: 4px;
+        }
+        .answer-badge.ans-pending  { background: rgba(255,255,255,.07); color: #64748b; }
+        .answer-badge.ans-done     { background: rgba(34,197,94,.2); color: #4ade80; }
+
+        /* Revive button */
+        .revive-btn {
+            margin-top: 4px;
+            padding: 2px 6px;
+            font-size: 8.5px;
+            font-weight: 700;
+            border-radius: 4px;
+            border: 1px solid rgba(255,215,0,.4);
+            background: rgba(255,215,0,.06);
+            color: var(--gold, #ffd700);
+            cursor: pointer;
+            transition: background .15s;
+        }
+        .revive-btn:hover { background: rgba(255,215,0,.18); }
+
+        /* Unit legend */
+        .unit-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+            padding: 12px 14px;
+            background: rgba(255,255,255,.03);
+            border: 1px solid rgba(255,255,255,.06);
+            border-radius: 12px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #94a3b8;
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.06);
+            border-radius: 6px;
+            padding: 4px 8px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+        .legend-item:hover { background: rgba(255,255,255,.09); }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .legend-count { font-size: 10px; color: #475569; }
+
+        /* Cluster alert box — appears when same-unit players are adjacent */
+        .cluster-warn {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 14px;
+            background: rgba(249,115,22,.1);
+            border: 1px solid rgba(249,115,22,.35);
+            border-radius: 10px;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #fb923c;
+            line-height: 1.5;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+            align-items: center;
+        }
+        .filter-btn {
+            padding: 5px 11px;
+            border-radius: 7px;
+            border: 1px solid rgba(255,255,255,.1);
+            background: rgba(255,255,255,.04);
+            color: #94a3b8;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .15s;
+        }
+        .filter-btn:hover, .filter-btn.active { border-color: #ffd700; color: #ffd700; background: rgba(255,215,0,.08); }
+        .filter-label { font-size: 11px; color: #64748b; }
+    </style>
+</head>
+
+<body>
+    <div class="admin-wrap">
+
+        <!-- ===== TOP CONTROLS ===== -->
+        <div class="card">
+            <div class="row" style="justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                <div>
+                    <h2 style="margin:0; font-size:18px;">🎛 Bảng điều khiển Admin</h2>
+                    <p class="muted" id="statusLine" style="margin:4px 0 0;">Đang kết nối Firebase...</p>
+                </div>
+                <div class="row" style="flex-wrap:wrap; gap:8px;">
+                    <button class="btn btn-outline" onclick="initTeams()">⚙ Khởi tạo 130 ghế</button>
+                    <button class="btn btn-outline" onclick="exportExcel()">⬇ Xuất Excel</button>
+                    <button class="btn btn-red" onclick="resetGame()">🔄 Reset toàn bộ</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== GAME CONTROLS ===== -->
+        <div class="card">
+            <div class="row" style="justify-content:space-between;">
+                <h3 style="margin:0;">Câu hỏi hiện tại</h3>
+                <span class="pill pill-gold" id="phaseBadge">lobby</span>
+            </div>
+            <p class="muted" id="qIndexLabel" style="margin:6px 0 2px;">Chưa bắt đầu</p>
+            <p id="qTextAdmin" style="font-weight:700; font-size:16px;"></p>
+            <p class="muted" id="qCorrectAdmin" style="margin-top:4px;"></p>
+            <div class="row" style="margin-top:14px; flex-wrap:wrap; gap:8px;">
+                <button class="btn btn-primary" id="btnShow" onclick="showQuestion()">▶ Hiển thị câu hỏi</button>
+                <button class="btn btn-outline" id="btnNext" onclick="startAnswering()" disabled>⏳ Bắt đầu trả lời</button>
+                <button class="btn btn-green"  id="btnScore" onclick="scoreQuestion()" disabled>✔ Chấm điểm &amp; Loại</button>
+            </div>
+            <p class="muted" id="answerProgress" style="margin-top:8px;"></p>
+        </div>
+
+        <!-- ===== TEAM GRID ===== -->
+        <div class="card">
+            <div class="row" style="justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <div>
+                    <h3 style="margin:0;">Trạng thái 130 ghế</h3>
+                    <p class="muted" style="margin:3px 0 0; font-size:12px;">Màu sắc theo đơn vị/chi đoàn — tránh để cùng màu ngồi gần nhau</p>
+                </div>
+                <div class="row" style="gap:8px;">
+                    <span class="pill pill-green" id="aliveCountBadge">0 sống</span>
+                    <span class="pill pill-red" id="deadCountBadge">0 bị loại</span>
+                </div>
+            </div>
+
+            <!-- Filter bar -->
+            <div class="filter-bar">
+                <span class="filter-label">Lọc:</span>
+                <button class="filter-btn active" id="fAll" onclick="setFilter('all')">Tất cả</button>
+                <button class="filter-btn" id="fAlive" onclick="setFilter('alive')">Còn lại</button>
+                <button class="filter-btn" id="fDead" onclick="setFilter('dead')">Bị loại</button>
+                <button class="filter-btn" id="fNotJoined" onclick="setFilter('notjoined')">Chưa vào</button>
+                <button class="btn btn-red" style="padding:5px 11px; font-size:11px;" onclick="reviveAll()">⟲ Hồi sinh TẤT CẢ</button>
+            </div>
+
+            <!-- Unit legend -->
+            <div class="unit-legend" id="unitLegend"></div>
+
+            <!-- Cluster warning -->
+            <div id="clusterWarning" class="cluster-warn" style="display:none;">
+                ⚠️ <div id="clusterWarningText"></div>
+            </div>
+
+            <!-- Seat grid -->
+            <div class="admin-seat-grid" id="teamGrid"></div>
+        </div>
+
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="clusters-data.js"></script>
+    <script src="teams-data.js"></script>
+    <script src="questions-data.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        'use strict';
+        const el = id => document.getElementById(id);
+
+        let latestTeams = {};
+        let latestGame  = { phase: 'lobby', currentQuestionIndex: -1, timeLimit: 10 };
+        let currentFilter = 'all';
+
+        /* ============ UNIT COLOR MAP ============ */
+        const UNIT_PALETTE = [
+            '#3b82f6','#ef4444','#22c55e','#f59e0b','#a855f7',
+            '#ec4899','#06b6d4','#84cc16','#f97316','#6366f1',
+            '#14b8a6','#e11d48','#eab308','#10b981','#8b5cf6',
+            '#fb7185','#38bdf8','#a3e635','#fbbf24','#c084fc'
+        ];
+        const unitColorMap  = {};
+        let colorIdx = 0;
+
+        function getUnitColor(unit) {
+            if (!unit || unit.trim() === '') return '#475569';
+            const key = unit.trim();
+            if (!unitColorMap[key]) {
+                unitColorMap[key] = UNIT_PALETTE[colorIdx % UNIT_PALETTE.length];
+                colorIdx++;
+            }
+            return unitColorMap[key];
+        }
+
+        function setFilter(f) {
+            currentFilter = f;
+            ['All','Alive','Dead','NotJoined'].forEach(k =>
+                el('f' + k.replace('N','N'))?.classList.remove('active'));
+            // simpler:
+            ['fAll','fAlive','fDead','fNotJoined'].forEach(id => {
+                const b = el(id); if (b) b.classList.remove('active');
+            });
+            const map = { all:'fAll', alive:'fAlive', dead:'fDead', notjoined:'fNotJoined' };
+            if (map[f] && el(map[f])) el(map[f]).classList.add('active');
+            renderTeamGrid();
+        }
+
+        /* ============ FIREBASE LISTENERS ============ */
+        db.ref('teams').on('value', snap => {
+            latestTeams = snap.val() || {};
+            renderTeamGrid();
+        });
+
+        db.ref('game').on('value', snap => {
+            latestGame = snap.val() || { phase: 'lobby', currentQuestionIndex: -1, timeLimit: 10 };
+            renderGameControls();
+            renderTeamGrid();
+        });
+
+        /* ============ INIT TEAMS ============ */
+        function initTeams() {
+            db.ref('teams').once('value').then(snap => {
+                const existing = snap.val() || {};
+                const updates = {};
+                let added = 0;
+                TEAMS_SEED.forEach(t => {
+                    if (!existing[t.code]) {
+                        updates['teams/' + t.code] = {
+                            seatNumber: t.seatNumber,
+                            displayName: null,
+                            unit: null,
+                            status: 'not_joined',
+                            eliminatedAtQuestion: null,
+                            answers: {}
+                        };
+                        added++;
+                    }
+                });
+                if (added === 0) {
+                    el('statusLine').textContent = '130 ghế đã đầy đủ trong Firebase. Có thể cho thí sinh đăng nhập.';
+                } else {
+                    db.ref().update(updates).then(() => {
+                        el('statusLine').textContent = `Đã bổ sung ${added} ghế còn thiếu. Tổng 130 ghế sẵn sàng.`;
+                    }).catch(err => { el('statusLine').textContent = 'Lỗi Firebase: ' + err.message; });
+                }
+            }).catch(err => { el('statusLine').textContent = 'Lỗi kết nối: ' + err.message; });
+
+            db.ref('game').once('value').then(snap => {
+                if (!snap.exists()) db.ref('game').set({ phase: 'lobby', currentQuestionIndex: -1, timeLimit: 10 });
+            });
+        }
+
+        /* ============ RENDER TEAM GRID ============ */
+        function renderTeamGrid() {
+            const grid = el('teamGrid');
+            let alive = 0, dead = 0;
+
+            // Build sorted list of 130 seats
+            const byCode = {};
+            Object.keys(latestTeams).forEach(code => { byCode[code] = latestTeams[code]; });
+
+            const items = [];
+            for (let i = 1; i <= 130; i++) {
+                const padded = String(i).padStart(3, '0');
+                const code = 'xh' + padded;
+                const t = byCode[code] || null;
+                const status = t ? (t.status || 'not_joined') : 'not_joined';
+                const name   = t ? (t.displayName || '') : '';
+                const unit   = t ? (t.unit || '') : '';
+
+                if (status === 'alive' || status === 'winner') alive++;
+                if (status === 'eliminated') dead++;
+
+                // Filter
+                if (currentFilter === 'alive'     && status !== 'alive' && status !== 'winner') continue;
+                if (currentFilter === 'dead'       && status !== 'eliminated') continue;
+                if (currentFilter === 'notjoined'  && status !== 'not_joined') continue;
+
+                const uColor = getUnitColor(unit);
+                const shortUnit = unit.length > 18 ? unit.slice(0, 16) + '…' : unit;
+
+                // Answer badge
+                let answerBadge = '';
+                if (t && latestGame.phase === 'question' && status === 'alive') {
+                    const qIdx = latestGame.currentQuestionIndex;
+                    const ans = t.answers && t.answers[qIdx];
+                    answerBadge = ans && ans.choice
+                        ? `<div class="answer-badge ans-done">${ans.choice}</div>`
+                        : `<div class="answer-badge ans-pending">…</div>`;
+                }
+
+                // Revive button
+                const reviveBtn = status === 'eliminated'
+                    ? `<button class="revive-btn" onclick="reviveOne('${code}')">Hồi sinh</button>`
+                    : '';
+
+                items.push(`
+                <div class="admin-slot ${status}" title="${escHtml(unit)} — ${escHtml(name)}">
+                    ${answerBadge}
+                    <div class="slot-code-num">${i}</div>
+                    ${name ? `<div class="slot-player-name">${escHtml(name)}</div>` : ''}
+                    ${unit ? `<div class="unit-label-badge" style="justify-content:center;">
+                        <span class="unit-dot" style="background:${uColor};"></span>
+                        <span class="unit-label-text" style="color:${uColor};">${escHtml(shortUnit)}</span>
+                    </div>` : ''}
+                    ${reviveBtn}
+                </div>`);
+            }
+
+            grid.innerHTML = items.join('');
+
+            el('aliveCountBadge').textContent = alive + ' sống';
+            el('deadCountBadge').textContent  = dead  + ' bị loại';
+
+            renderUnitLegend();
+            detectClustering();
+        }
+
+        /* ============ UNIT LEGEND ============ */
+        function renderUnitLegend() {
+            // Count seats per unit
+            const unitCounts = {};
+            Object.values(latestTeams).forEach(t => {
+                const u = (t.unit || '').trim();
+                if (u) unitCounts[u] = (unitCounts[u] || 0) + 1;
+            });
+
+            const sorted = Object.entries(unitCounts).sort((a, b) => b[1] - a[1]);
+            el('unitLegend').innerHTML = sorted.length
+                ? sorted.map(([unit, cnt]) => {
+                    const c = getUnitColor(unit);
+                    const short = unit.length > 30 ? unit.slice(0, 28) + '…' : unit;
+                    return `<div class="legend-item" onclick="highlightUnit('${escHtml(unit).replace(/'/g,'&#39;')}')">
+                        <span class="legend-dot" style="background:${c};"></span>
+                        <span>${escHtml(short)}</span>
+                        <span class="legend-count">(${cnt})</span>
+                    </div>`;
+                }).join('')
+                : '<span style="color:#475569; font-size:12px;">Chưa có đơn vị nào đăng nhập</span>';
+        }
+
+        /* ============ CLUSTER DETECTION ============ */
+        // Simple: find seats where 3+ of the same unit appear within a window of 10 consecutive seats
+        function detectClustering() {
+            const byCode = {};
+            Object.keys(latestTeams).forEach(code => { byCode[code] = latestTeams[code]; });
+
+            // Build seat→unit map
+            const seatUnit = {};
+            for (let i = 1; i <= 130; i++) {
+                const code = 'xh' + String(i).padStart(3, '0');
+                const t = byCode[code];
+                if (t && t.unit && t.status === 'alive') {
+                    seatUnit[i] = t.unit.trim();
+                }
+            }
+
+            const warnings = [];
+            const WINDOW = 10; // check windows of 10 consecutive seats
+            const THRESHOLD = 3; // flag if 3+ same unit in window
+
+            for (let start = 1; start <= 130 - WINDOW + 1; start++) {
+                const unitFreq = {};
+                for (let i = start; i < start + WINDOW; i++) {
+                    const u = seatUnit[i];
+                    if (u) unitFreq[u] = (unitFreq[u] || 0) + 1;
+                }
+                Object.entries(unitFreq).forEach(([unit, count]) => {
+                    if (count >= THRESHOLD) {
+                        warnings.push(`⚠️ "${unit}" có ${count} người trong ghế ${start}–${start + WINDOW - 1}`);
+                    }
+                });
+            }
+
+            // Deduplicate warnings
+            const unique = [...new Set(warnings)];
+            if (unique.length > 0) {
+                el('clusterWarning').style.display = 'flex';
+                el('clusterWarningText').innerHTML = '<strong>Cảnh báo tập trung cùng đơn vị:</strong><br>' + unique.join('<br>');
+            } else {
+                el('clusterWarning').style.display = 'none';
+            }
+        }
+
+        function highlightUnit(unit) {
+            // Scroll to first seat of this unit
+            const slots = document.querySelectorAll('.admin-slot');
+            slots.forEach(s => { s.style.outline = ''; });
+            slots.forEach(s => {
+                if (s.title.startsWith(unit)) {
+                    s.style.outline = '2px solid ' + getUnitColor(unit);
+                }
+            });
+        }
+
+        /* ============ GAME CONTROLS ============ */
+        function renderGameControls() {
+            el('phaseBadge').textContent = latestGame.phase;
+            const idx = latestGame.currentQuestionIndex;
+            if (idx === undefined || idx < 0) {
+                el('qIndexLabel').textContent = 'Chưa bắt đầu';
+                el('qTextAdmin').textContent = '';
+                el('qCorrectAdmin').textContent = '';
+            } else {
+                const q = QUESTIONS[idx];
+                el('qIndexLabel').textContent = 'Câu ' + (idx + 1) + ' / ' + QUESTIONS.length;
+                el('qTextAdmin').textContent = q ? q.text : '(hết câu hỏi)';
+                if (q) el('qCorrectAdmin').textContent = 'Đáp án đúng: ' + q.correct + '. ' + q.options[q.correct];
+            }
+            el('btnShow').disabled  = (latestGame.phase === 'read_question' || latestGame.phase === 'question');
+            el('btnNext').disabled  = (latestGame.phase !== 'read_question');
+            el('btnScore').disabled = (latestGame.phase !== 'question');
+
+            if (latestGame.phase === 'question') {
+                const idx2 = latestGame.currentQuestionIndex;
+                let answered = 0, total = 0;
+                Object.values(latestTeams).forEach(t => {
+                    if (t.status === 'alive') {
+                        total++;
+                        if (t.answers && t.answers[idx2]) answered++;
+                    }
+                });
+                el('answerProgress').textContent = `Đã trả lời: ${answered} / ${total} ghế còn sống`;
+            } else {
+                el('answerProgress').textContent = '';
+            }
+        }
+
+        /* ============ ADMIN ACTIONS ============ */
+        function showQuestion() {
+            let idx = latestGame.currentQuestionIndex;
+            if (latestGame.phase !== 'read_question' && latestGame.phase !== 'question') {
+                idx = (idx === undefined || idx < 0) ? 0 : idx + 1;
+            }
+            if (idx >= QUESTIONS.length) { alert('Đã hết câu hỏi trong ngân hàng.'); return; }
+            db.ref('game').update({ phase: 'read_question', currentQuestionIndex: idx });
+        }
+
+        function startAnswering() {
+            if (latestGame.phase !== 'read_question') return;
+            db.ref('game').update({
+                phase: 'question',
+                startedAt: Date.now(),
+                timeLimit: 10,
+                answerWindowSeconds: 10
+            });
+        }
+
+        function scoreQuestion() {
+            const idx = latestGame.currentQuestionIndex;
+            const q = QUESTIONS[idx];
+            if (!q) return;
+            const updates = {};
+            let aliveAfter = [];
+            Object.keys(latestTeams).forEach(code => {
+                const t = latestTeams[code];
+                if (t.status !== 'alive') return;
+                const ans = t.answers && t.answers[idx];
+                const isCorrect = ans && ans.choice === q.correct;
+                if (isCorrect) {
+                    updates['teams/' + code + '/answers/' + idx + '/correct'] = true;
+                    aliveAfter.push(code);
+                } else {
+                    updates['teams/' + code + '/status'] = 'eliminated';
+                    updates['teams/' + code + '/eliminatedAtQuestion'] = idx + 1;
+                    if (ans) updates['teams/' + code + '/answers/' + idx + '/correct'] = false;
+                }
+            });
+            db.ref().update(updates).then(() => {
+                if (aliveAfter.length === 1 && idx >= 14) {
+                    db.ref('teams/' + aliveAfter[0] + '/status').set('winner');
+                    db.ref('game').update({ phase: 'finished', winnerCode: aliveAfter[0] });
+                } else {
+                    db.ref('game').update({ phase: 'result' });
+                }
+            });
+        }
+
+        function reviveAll() {
+            const updates = {};
+            Object.keys(latestTeams).forEach(code => {
+                if (latestTeams[code].status === 'eliminated') {
+                    updates['teams/' + code + '/status'] = 'alive';
+                    updates['teams/' + code + '/eliminatedAtQuestion'] = null;
+                }
+            });
+            if (Object.keys(updates).length) db.ref().update(updates);
+        }
+
+        function reviveOne(code) {
+            db.ref('teams/' + code).update({ status: 'alive', eliminatedAtQuestion: null });
+        }
+
+        function resetGame() {
+            const ok = confirm(
+                '⚠️ Reset sẽ xoá TOÀN BỘ dữ liệu:\n' +
+                '- Trạng thái ván chơi\n' +
+                '- Toàn bộ 130 ghế (tên, đơn vị, đáp án...)\n\n' +
+                'Chỉ dùng khi test xong. Tiếp tục?'
+            );
+            if (!ok) return;
+            el('statusLine').textContent = 'Đang reset...';
+            ['btnShow','btnNext','btnScore'].forEach(id => { el(id).disabled = true; });
+            db.ref('game').set({ phase: 'lobby', currentQuestionIndex: -1, timeLimit: 10 })
+                .then(() => db.ref('teams').remove())
+                .then(() => {
+                    el('statusLine').textContent = 'Reset xong. Bấm "Khởi tạo 130 ghế" để tạo lại trước khi thi.';
+                })
+                .catch(err => { el('statusLine').textContent = 'Lỗi reset: ' + err.message; });
+        }
+
+        function exportExcel() {
+            const rows = [];
+            for (let i = 1; i <= 130; i++) {
+                const code = 'xh' + String(i).padStart(3, '0');
+                const t = latestTeams[code];
+                rows.push({
+                    'Số ghế': i,
+                    'Mã đăng nhập': ('XH' + String(i).padStart(3,'0')),
+                    'Họ và tên': t ? (t.displayName || '') : '',
+                    'Đơn vị / Chi đoàn': t ? (t.unit || '') : '',
+                    'Trạng thái': t ? (t.status || 'not_joined') : 'not_joined',
+                    'Bị loại ở câu': t ? (t.eliminatedAtQuestion || '') : ''
+                });
+            }
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Danh sach ghe');
+            XLSX.writeFile(wb, 'danh-sach-thi-sinh.xlsx');
+        }
+
+        function escHtml(str) {
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+    </script>
+</body>
+
+</html>
